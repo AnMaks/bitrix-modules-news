@@ -1,0 +1,1 @@
+# bitrix-modules-news
