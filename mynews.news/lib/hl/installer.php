@@ -16,8 +16,6 @@
  * 3) removeHighloadBlock()
  *    - при удалении модуля удаляет поля UF_* и сам HL-блок
  *
- * Важно: чтобы это работало, должен быть установлен модуль highloadblock.
- * Поэтому в начале методов мы делаем Loader::includeModule('highloadblock').
  */
 
 namespace Mynews\News\HL;
