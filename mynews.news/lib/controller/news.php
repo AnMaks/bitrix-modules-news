@@ -15,11 +15,12 @@
  *  - проверяем CSRF (sessid), чтобы запрос был “с сайта”, а не снаружи
  */
 
-namespace MyNews\Controller;
+
+namespace Mynews\News\Controller;
 
 use Bitrix\Main\Engine\Controller;
 use Bitrix\Main\Engine\ActionFilter;
-use MyNews\Service\NewsRepository;
+use Mynews\News\Service\NewsRepository;
 
 class News extends Controller
 {

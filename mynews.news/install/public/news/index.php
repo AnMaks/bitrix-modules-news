@@ -6,9 +6,7 @@
  * который выводит список новостей и позволяет листать их.
  * Все данные загружаются из Highload-блока через модуль mynews.news.
  */
-
-require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/header.php");
-
+require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
 $APPLICATION->SetTitle("Новости");
 
 // Подключаем компонент вывода новостей
@@ -20,4 +18,4 @@ $APPLICATION->IncludeComponent(
     ]
 );
 
-require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/footer.php");
+require($_SERVER["DOCUMENT_ROOT"]."/bitrix/footer.php");

@@ -20,31 +20,33 @@
  * Поэтому в начале методов мы делаем Loader::includeModule('highloadblock').
  */
 
-namespace MyNews\HL;
+namespace Mynews\News\HL;
 
 use Bitrix\Main\Loader;
 use Bitrix\Main\SystemException;
 use Bitrix\Highloadblock\HighloadBlockTable;
+use Bitrix\Main\Localization\Loc;
+
+Loc::loadMessages(__FILE__);
 
 class Installer
 {
-    public const HL_NAME = 'MyNewsNews';
+    public const HL_NAME  = 'MyNewsNews';
     public const HL_TABLE = 'mynews_news';
 
-    /**
-     * Создаёт HL-блок и поля, если их ещё нет.
-     * Возвращает HL_BLOCK_ID.
-     */
     public static function ensureHighloadBlock(): int
     {
         if (!Loader::includeModule('highloadblock')) {
-            throw new SystemException('Module highloadblock is not installed');
+            throw new SystemException(
+                Loc::getMessage('MYNEWS_HL_NOT_INSTALLED')
+            );
         }
 
         // 1) Проверим, не создан ли уже блоки
         $existing = HighloadBlockTable::getList([
             'filter' => ['=TABLE_NAME' => self::HL_TABLE],
-            'select' => ['ID', 'NAME', 'TABLE_NAME']
+            'select' => ['ID'],
+            'limit'  => 1,
         ])->fetch();
 
         if ($existing) {
@@ -53,25 +55,40 @@ class Installer
 
         // 2) Создаём HL-блок
         $addRes = HighloadBlockTable::add([
-            'NAME' => self::HL_NAME,
-            'TABLE_NAME' => self::HL_TABLE
+            'NAME'       => self::HL_NAME,
+            'TABLE_NAME' => self::HL_TABLE,
         ]);
 
         if (!$addRes->isSuccess()) {
-            throw new SystemException('Cannot create HL block: ' . implode('; ', $addRes->getErrorMessages()));
+            throw new SystemException(
+                Loc::getMessage('MYNEWS_HL_CREATE_ERROR') . ': ' .
+                implode('; ', $addRes->getErrorMessages())
+            );
         }
 
         $hlId = (int)$addRes->getId();
 
         // 3) Создаём пользовательские поля UF_*
-        self::addUserField($hlId, 'UF_TITLE', 'string', 'Заголовок', true);
-        self::addUserField($hlId, 'UF_TEXT', 'string', 'Текст', true, [
-            'SIZE' => 80,
-            'ROWS' => 8,
-        ]);
+        self::addUserField($hlId, 'UF_TITLE', 'string',
+            Loc::getMessage('MYNEWS_HL_FIELD_TITLE'),
+            true
+        );
 
-        self::addUserField($hlId, 'UF_DATE', 'datetime', 'Дата', true);
-        self::addUserField($hlId, 'UF_SORT', 'integer', 'Сортировка', false);
+        self::addUserField($hlId, 'UF_TEXT', 'string',
+            Loc::getMessage('MYNEWS_HL_FIELD_TEXT'),
+            true,
+            ['ROWS' => 8, 'SIZE' => 80]
+        );
+
+        self::addUserField($hlId, 'UF_DATE', 'datetime',
+            Loc::getMessage('MYNEWS_HL_FIELD_DATE'),
+            true
+        );
+
+        self::addUserField($hlId, 'UF_SORT', 'integer',
+            Loc::getMessage('MYNEWS_HL_FIELD_SORT'),
+            false
+        );
 
         return $hlId;
     }
@@ -79,14 +96,20 @@ class Installer
     public static function fillTestData(int $hlId, int $count = 8): void
     {
         if (!Loader::includeModule('highloadblock')) {
-            throw new SystemException('Module highloadblock is not installed');
+            throw new SystemException(
+                Loc::getMessage('MYNEWS_HL_NOT_INSTALLED')
+            );
         }
 
-        $entity = HighloadBlockTable::compileEntity($hlId);
+        $entity    = HighloadBlockTable::compileEntity($hlId);
         $dataClass = $entity->getDataClass();
 
-        // Если уже есть данные — не дублируем
-        $hasAny = $dataClass::getList(['select' => ['ID'], 'limit' => 1])->fetch();
+        // Если уже есть данные — не создаем их
+        $hasAny = $dataClass::getList([
+            'select' => ['ID'],
+            'limit'  => 1,
+        ])->fetch();
+
         if ($hasAny) {
             return;
         }
@@ -98,14 +121,26 @@ class Installer
             $date = (clone $now)->add("-{$i} days");
 
             $add = $dataClass::add([
-                'UF_TITLE' => "Тестовая новость №{$i}",
-                'UF_TEXT'  => "Это тестовый текст новости №{$i}. Здесь может быть краткое описание.",
-                'UF_DATE'  => $date,
-                'UF_SORT'  => 100 + $i,
+                'UF_TITLE' => str_replace(
+                    '#NUM#',
+                    $i,
+                    Loc::getMessage('MYNEWS_TEST_TITLE')
+                ),
+                'UF_TEXT' => str_replace(
+                    '#NUM#',
+                    $i,
+                    Loc::getMessage('MYNEWS_TEST_TEXT')
+                ),
+                'UF_DATE' => $date,
+                'UF_SORT' => 100 + $i,
             ]);
 
+
             if (!$add->isSuccess()) {
-                throw new SystemException('Cannot add test data: ' . implode('; ', $add->getErrorMessages()));
+                throw new SystemException(
+                    Loc::getMessage('MYNEWS_HL_ADD_DATA_ERROR') . ': ' .
+                    implode('; ', $add->getErrorMessages())
+                );
             }
         }
     }
@@ -118,7 +153,8 @@ class Installer
 
         $existing = HighloadBlockTable::getList([
             'filter' => ['=TABLE_NAME' => self::HL_TABLE],
-            'select' => ['ID']
+            'select' => ['ID'],
+            'limit'  => 1,
         ])->fetch();
 
         if (!$existing) {
@@ -127,13 +163,12 @@ class Installer
 
         $hlId = (int)$existing['ID'];
 
-        // Удалим UF-поля
+        // Удалим UF-поля и HL-блок
         self::deleteUserField($hlId, 'UF_TITLE');
         self::deleteUserField($hlId, 'UF_TEXT');
         self::deleteUserField($hlId, 'UF_DATE');
         self::deleteUserField($hlId, 'UF_SORT');
 
-        // Удалим HL-блок
         HighloadBlockTable::delete($hlId);
     }
 
@@ -144,17 +179,18 @@ class Installer
         string $label,
         bool $mandatory,
         array $settings = []
-    ): void
-    {
-        $entityId = 'HLBLOCK_' . $hlId;
-
+    ): void {
+        $entityId  = 'HLBLOCK_' . $hlId;
         $userField = new \CUserTypeEntity();
 
         // если поле уже есть — пропускаем
         $existing = \Bitrix\Main\UserFieldTable::getList([
-            'filter' => ['=ENTITY_ID' => $entityId, '=FIELD_NAME' => $fieldName],
+            'filter' => [
+                '=ENTITY_ID' => $entityId,
+                '=FIELD_NAME' => $fieldName
+            ],
             'select' => ['ID'],
-            'limit' => 1
+            'limit' => 1,
         ])->fetch();
 
         if ($existing) {
@@ -170,16 +206,17 @@ class Installer
             'MULTIPLE' => 'N',
             'MANDATORY' => $mandatory ? 'Y' : 'N',
             'SETTINGS' => $settings,
-            'EDIT_FORM_LABEL' => ['ru' => $label, 'en' => $label],
-            'LIST_COLUMN_LABEL' => ['ru' => $label, 'en' => $label],
-            'LIST_FILTER_LABEL' => ['ru' => $label, 'en' => $label],
+            'EDIT_FORM_LABEL' => ['ru' => $label],
+            'LIST_COLUMN_LABEL' => ['ru' => $label],
+            'LIST_FILTER_LABEL' => ['ru' => $label],
         ]);
 
         if (!$id) {
             global $APPLICATION;
             $ex = $APPLICATION->GetException();
-            throw new \Bitrix\Main\SystemException(
-                'Cannot add userfield ' . $fieldName . ': ' . ($ex ? $ex->GetString() : 'unknown error')
+
+            throw new SystemException(
+                'UF ' . $fieldName . ': ' . ($ex ? $ex->GetString() : 'unknown error')
             );
         }
     }
@@ -189,14 +226,16 @@ class Installer
         $entityId = 'HLBLOCK_' . $hlId;
 
         $row = \Bitrix\Main\UserFieldTable::getList([
-            'filter' => ['=ENTITY_ID' => $entityId, '=FIELD_NAME' => $fieldName],
+            'filter' => [
+                '=ENTITY_ID' => $entityId,
+                '=FIELD_NAME' => $fieldName
+            ],
             'select' => ['ID'],
-            'limit' => 1
+            'limit' => 1,
         ])->fetch();
 
         if ($row) {
-            $userField = new \CUserTypeEntity();
-            $userField->Delete((int)$row['ID']);
+            (new \CUserTypeEntity())->Delete((int)$row['ID']);
         }
     }
 }

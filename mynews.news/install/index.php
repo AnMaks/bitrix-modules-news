@@ -18,13 +18,15 @@
  *  - модуль снимается с регистрации.
  */
 
+defined('B_PROLOG_INCLUDED') || die();
+
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\ModuleManager;
 use Bitrix\Main\Loader;
 
-use MyNews\HL\Installer;
-
 Loc::loadMessages(__FILE__);
+
+use Mynews\News\HL\Installer;
 
 // Проверяем, не был ли модуль уже подключён
 if (class_exists('mynews_news')) {
@@ -47,39 +49,37 @@ class mynews_news extends CModule
         $this->MODULE_VERSION = $arVersion['VERSION'] ?? '1.0.0';
         $this->MODULE_VERSION_DATE = $arVersion['VERSION_DATE'] ?? date('Y-m-d');
 
-        $this->MODULE_NAME = 'Лента новостей (mynews)';
-        $this->MODULE_DESCRIPTION =
-            'HL-блок новостей + компонент + AJAX через контроллер модуля + /news/';
-    }
+        $this->MODULE_NAME = Loc::getMessage('MYNEWS_MODULE_NAME');
+        $this->MODULE_DESCRIPTION = Loc::getMessage('MYNEWS_MODULE_DESC');
 
+    }
     /**
      * Установка модуля
      */
     public function DoInstall()
     {
         ModuleManager::registerModule($this->MODULE_ID);
-
-        // После регистрации можно подключать модуль
         Loader::includeModule($this->MODULE_ID);
 
         $this->InstallDB();
         $this->InstallFiles();
-    }
 
+        return true;
+    }
     /**
      * Удаление модуля
      */
     public function DoUninstall()
     {
-        // Подключаем модуль, чтобы работала автозагрузка классов
         Loader::includeModule($this->MODULE_ID);
 
         $this->UnInstallFiles();
         $this->UnInstallDB();
 
         ModuleManager::unRegisterModule($this->MODULE_ID);
-    }
 
+        return true;
+    }
     /**
      * Создание Highload-блока и тестовых данных
      */
@@ -87,10 +87,8 @@ class mynews_news extends CModule
     {
         $hlId = Installer::ensureHighloadBlock();
         Installer::fillTestData($hlId, 8);
-
         return true;
     }
-
     /**
      * Удаление Highload-блока
      */
@@ -99,40 +97,24 @@ class mynews_news extends CModule
         Installer::removeHighloadBlock();
         return true;
     }
-
     /**
      * Копирование файлов модуля
      */
     public function InstallFiles()
     {
-        // Копируем компонент
-        CopyDirFiles(
-            __DIR__ . '/components',
-            $_SERVER['DOCUMENT_ROOT'] . '/local/components',
-            true,
-            true
-        );
+        CopyDirFiles(__DIR__ . '/components', $_SERVER['DOCUMENT_ROOT'] . '/local/components', true, true);
 
-        // Создаём публичную страницу /news/
-        CopyDirFiles(
-            __DIR__ . '/public/news',
-            $_SERVER['DOCUMENT_ROOT'] . '/news',
-            true,
-            true
-        );
+        // ✅ создаём /news3/
+        CopyDirFiles(__DIR__ . '/public/news', $_SERVER['DOCUMENT_ROOT'] . '/news', true, true);
 
         return true;
     }
-
     /**
      * Удаление файлов модуля
      */
     public function UnInstallFiles()
     {
-        // Удаляем страницу, которую создавали при установке
         DeleteDirFilesEx('/news');
-
-        // Удаляем компонент
         DeleteDirFilesEx('/local/components/mynews/news.list');
 
         return true;

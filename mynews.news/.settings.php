@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Настройки контроллеров модуля.
  *
@@ -15,8 +16,9 @@
 return [
     'controllers' => [
         'value' => [
+            'defaultNamespace' => '\\Mynews\\News\\Controller',
             'namespaces' => [
-                '\\MyNews\\Controller' => 'api',
+                '\\Mynews\\News\\Controller' => 'api',
             ],
         ],
         'readonly' => true,
